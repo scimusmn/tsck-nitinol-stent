@@ -5,4 +5,5 @@ The beta coefficient of the thermistor is also factored into the equation.  The 
 3000-4000.  The beta coefficient is usually listed in the thermistor data sheet.
 
 For more info, reference the production status notes here:
+
 G:\Shared drives\TSCK RoboSapiens (Internal)\Production\Fabrication\222 Nitinol Stents
