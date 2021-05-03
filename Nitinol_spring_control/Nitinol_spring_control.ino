@@ -155,6 +155,6 @@ void loop(void) {
   lcd.print("Temp: ");
   lcd.print(roundedTemp, 1);
   lcd.print(" C        ");
-  if (roundedTemp <= 26.0) digitalWrite(fan, LOW);
+  if (roundedTemp <= 28.0) digitalWrite(fan, LOW);
   //delay(10);
 }
