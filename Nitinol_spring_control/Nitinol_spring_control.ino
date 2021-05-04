@@ -17,8 +17,8 @@ averager averageReading(10); //take 10 samples
 #define fan 6
 #define heatOnLED 13
 #define THERMISTORPIN A0 // analog input for thermistor
-#define thermistorLow 15.0 //min safe thermistor reading in C before triggering out of range fault
-#define thermistorHigh 50.0 //max safe thermistor reading in C before triggering out of range fault
+#define thermistorLow 15.0 //min safe thermistor reading in C before triggering out-of-range thermistor error fault
+#define thermistorHigh 50.0 //max safe thermistor reading in C before triggering out-of-range thermistor error fault
 #define THERMISTORNOMINAL 10000 // resistance at 25 degrees C
 #define TEMPERATURENOMINAL 25 // temp. for nominal resistance (almost always 25 C)
 #define BCOEFFICIENT 3988 //TDK  B57863S0103F040 (The beta coefficient of the thermistor is usually 3000-4000)
