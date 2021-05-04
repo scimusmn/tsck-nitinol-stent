@@ -21,22 +21,30 @@ averager averageReading(10); //take 10 samples
 #define coolDownPB 5
 #define fan 6
 #define heatOnLED 13
+#define lcdRefreshRate 200 //lcd refresh rate in ms, slows down update of lcd to make it more readable
+#define watchdogTimer 120000 //reset timer in ms
+#define minTemp 30.0 //min temp, affects fan turn-off point
+#define midTemp 38.0 //mid temp, affects when flipflopTimer1 starts
+#define maxTemp 42.0 //max temp, affects when flipflopTimer2 starts
 
+//variables
 bool heating = false;
 bool delayThermistorCheck = true;
 float tempRead = 0.0;
-float mapfloat(float x, float in_min, float in_max, float out_min, float out_max
+float mapfloat(float x, float in_min, float in_max, float out_min, float out_max)
 {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
-long startTime = 0;
-long timeNow = 0;
 long lagTime = 0;
 float average = 0.0;
 float steinhart = 0.0;
 float displayTemp = 0.0;
-float coldOffset = 0.0;
-
+float coldOffset = 0.0; //this can be used as an offset to compensate for temp difference at spring ends
+float roundedTemp = 0.0; //display temp value on LCD
+long startTime = 0;
+long timeNow = 0; //current time
+long timenow2 = 0; //current time
+long lcdRefreshTimer = 0;
 void thermistorFault() { //stay here if thermistor is disconnected or reading is out of range
   while (1);
 }
@@ -50,8 +58,8 @@ void setup(void) {
   flipflopTimer2.setup([](boolean flipflopValue) {
     digitalWrite(heatSSR, flipflopValue);
     digitalWrite(heatOnLED , flipflopValue);
-  }, 100,400);
-  analogReference(EXTERNAL); //set analog reference to 3.3V
+  }, 100, 400);
+  analogReference(EXTERNAL); //set analog reference to 3.3V, using 3.3 reference improves s/n ratio
   pinMode(heatSSR, OUTPUT);
   pinMode(addHeatPB, INPUT_PULLUP);
   pinMode(coolDownPB, INPUT_PULLUP);
@@ -64,7 +72,7 @@ void setup(void) {
   lcd.setCursor(0, 1);
   lcd.print("Heat OFF");
   startTime = millis();
-  digitalWrite(fan,HIGH);
+  digitalWrite(fan, HIGH);
 
 }
 
@@ -81,7 +89,6 @@ void loop(void) {
   steinhart += 1.0 / (TEMPERATURENOMINAL + 273.15); // + (1/To)
   steinhart = 1.0 / steinhart;                 // Invert
   steinhart -= 273.15;                         // convert to C
-  //measuredTemp = steinhart;
 
   //*********compensation for thermistor being mounted at cooler end of spring********
   tempRead = mapfloat(steinhart, 23.0, 29.0, 23.0, 35.5); //min and max temp change at thermistor, actual measured min and max temp change at center of spring
@@ -98,7 +105,6 @@ void loop(void) {
     lcd.print("thermistor error");
     thermistorFault();
   }
-
 
   //*************heat or cool visitor button selection*************
   if (!digitalRead(addHeatPB) && digitalRead(coolDownPB) && !heating) { //add heat
@@ -124,20 +130,20 @@ void loop(void) {
   }
 
   //*************regulation of spring temperature during heating*************
-  if (tempRead < 30.0 && heating) {
+  if (tempRead < minTemp && heating) {
     digitalWrite(heatSSR, HIGH);
   }
-  else if (tempRead  >= 30.0 && tempRead  <= 38.0 && heating) {
+  else if (tempRead  >= minTemp && tempRead  <= midTemp && heating) {
     flipflopTimer1.update();
   }
-  else if (tempRead  > 38.0 && tempRead <= 42.0 && heating) {
+  else if (tempRead  > midTemp && tempRead <= maxTemp && heating) {
     flipflopTimer2.update();
   }
-  else if (tempRead >= 42.0 - coldOffset && heating) {
+  else if (tempRead >= maxTemp - coldOffset && heating) {
     digitalWrite(heatSSR, LOW);
     digitalWrite(heatOnLED , LOW);
   }
-  if (millis() >= timeNow + 120000 && heating) { // 2 minute watchdog timer
+  if (millis() >= timeNow + watchdogTimer && heating) { // 2 minute watchdog timer
     digitalWrite(heatSSR, LOW);
     digitalWrite(fan, HIGH);
     digitalWrite(heatOnLED , HIGH);
@@ -147,14 +153,15 @@ void loop(void) {
     lcd.setCursor(0, 1);
     lcd.print("Heat OFF");
   }
-  
 
   //********update LCD display with current temperature rounded to nearest .5 degree**********
-  float roundedTemp = 0.5*round(2.0*displayTemp) ;
-  lcd.setCursor(0, 0);
-  lcd.print("Temp: ");
-  lcd.print(roundedTemp, 1);
-  lcd.print(" C        ");
-  if (roundedTemp <= 28.0) digitalWrite(fan, LOW);
-  //delay(10);
+  if (millis() >= lcdRefreshTimer + lcdRefreshRate) { //only update lcd per the defined lcd refresh rate
+    roundedTemp = 0.5 * round(2.0 * displayTemp) ;
+    lcd.setCursor(0, 0);
+    lcd.print("Temp: ");
+    lcd.print(roundedTemp, 1);
+    lcd.print(" C        ");
+    lcdRefreshTimer = millis();
+  }
+  if (roundedTemp <= minTemp) digitalWrite(fan, LOW);
 }
