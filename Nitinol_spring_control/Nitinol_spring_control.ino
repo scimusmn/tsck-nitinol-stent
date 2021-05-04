@@ -11,16 +11,18 @@ FlipflopTimer flipflopTimer2;
 #include "averager.h"
 averager averageReading(10); //take 10 samples
 
-#define THERMISTORPIN A0 // analog input for thermistor
-#define THERMISTORNOMINAL 10000 // resistance at 25 degrees C
-#define TEMPERATURENOMINAL 25 // temp. for nominal resistance (almost always 25 C)
-#define BCOEFFICIENT 3988 //TDK  B57863S0103F040 (The beta coefficient of the thermistor is usually 3000-4000)
-#define SERIESRESISTOR 10000 // the value of the 'other' resistor
 #define heatSSR 3
 #define addHeatPB 4
 #define coolDownPB 5
 #define fan 6
 #define heatOnLED 13
+#define THERMISTORPIN A0 // analog input for thermistor
+#define thermistorLow 15.0 //min safe thermistor reading in C before triggering out of range fault
+#define thermistorHigh 50.0 //max safe thermistor reading in C before triggering out of range fault
+#define THERMISTORNOMINAL 10000 // resistance at 25 degrees C
+#define TEMPERATURENOMINAL 25 // temp. for nominal resistance (almost always 25 C)
+#define BCOEFFICIENT 3988 //TDK  B57863S0103F040 (The beta coefficient of the thermistor is usually 3000-4000)
+#define SERIESRESISTOR 10000 // the value of the 'other' resistor
 #define lcdRefreshRate 200 //lcd refresh rate in ms, slows down update of lcd to make it more readable
 #define watchdogTimer 120000 //reset timer in ms
 #define minTemp 30.0 //min temp, affects fan turn-off point
@@ -45,6 +47,7 @@ long startTime = 0;
 long timeNow = 0; //current time
 long timenow2 = 0; //current time
 long lcdRefreshTimer = 0;
+
 void thermistorFault() { //stay here if thermistor is disconnected or reading is out of range
   while (1);
 }
@@ -92,15 +95,12 @@ void loop(void) {
   //*********compensation for thermistor being mounted at cooler end of spring********
   tempRead = mapfloat(steinhart, 23.0, 29.0, 23.0, 35.5); //min and max temp change at thermistor, actual measured min and max temp change at center of spring
   displayTemp = tempRead;
+  
   //*********make sure thermistor is reading temp in expected range, fault-out if not************
   if (millis() >= startTime + 2000) delayThermistorCheck = false; //wait 2 seconds after start-up, before checking thermistor
-  if ((tempRead < 15.0 || tempRead  > 50.00 ) && !delayThermistorCheck) {
+  if ((tempRead < thermistorLow || tempRead  > thermistorHigh ) && !delayThermistorCheck) {
     digitalWrite(heatSSR, LOW);
-    lcd.setCursor(0, 0);
-    lcd.print("                ");
-    lcd.setCursor(0, 1);
-    lcd.print("                ");
-    lcd.setCursor(0, 1);
+    lcd.clear();
     lcd.print("thermistor error");
     thermistorFault();
   }
@@ -113,7 +113,7 @@ void loop(void) {
     heating = true;
     timeNow = millis();
     lcd.setCursor(0, 1);
-    lcd.print("                ");//clear row
+    lcd.print("                ");//clear line 2
     lcd.setCursor(0, 1);
     lcd.print("Heat ON");
   }
@@ -123,7 +123,7 @@ void loop(void) {
     digitalWrite(heatOnLED , LOW);
     heating = false;
     lcd.setCursor(0, 1);
-    lcd.print("                "); //clear row
+    lcd.print("                "); //clear line 2
     lcd.setCursor(0, 1);
     lcd.print("Heat OFF");
   }
@@ -148,7 +148,7 @@ void loop(void) {
     digitalWrite(heatOnLED , HIGH);
     heating = false;
     lcd.setCursor(0, 1);
-    lcd.print("                ");
+    lcd.print("                "); //clear line 2
     lcd.setCursor(0, 1);
     lcd.print("Heat OFF");
   }
