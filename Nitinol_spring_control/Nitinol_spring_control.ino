@@ -73,7 +73,6 @@ void setup(void) {
   lcd.print("Heat OFF");
   startTime = millis();
   digitalWrite(fan, HIGH);
-
 }
 
 void loop(void) {
