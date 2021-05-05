@@ -21,30 +21,30 @@ averager averageReading(10); //take 10 samples
 
 //thermistor read fault limit parameters
 #define thermistorLow 15.0 //min safe thermistor reading in C before triggering out-of-range thermistor error fault
-#define thermistorHigh 50.0 //max safe thermistor reading in C before triggering out-of-range thermistor error fault
+#define thermistorHigh 65.0 //max safe thermistor reading in C before triggering out-of-range thermistor error fault
 
 //steinheart calculation parameters
-#define thermistorNominal 10000 // resistance at 25 degrees C
+#define thermistorNominal 10000 // kiloohm resistance in at 25 degrees C
 #define temperatureNominal 25 // temp. for nominal resistance (almost always 25 C)
 #define bCoefficient 3988 //TDK  B57863S0103F040 (The beta coefficient of the thermistor is usually 3000-4000)
 #define seriesResistor 10000 // the value of the 'other' resistor
 
-//compensation for thermistor being located at cool end of spring, the mapped values change the slope of the thermistor response
-#define thermistorReadMinActual 23.0 //minimum temperature at the thermocouple location
-#define thermistorReadMaxActual 29.0 //maximum temperature at the thermocouple location
-#define thermistorReadMappedMin 23.0 //minimum mapped temperature
-#define thermistorReadMappedMax 35.5 //maximum mapped temperature 
+//compensation for thermistor being located at cool end of spring, the mapped increase the span and amplifies delta T
+#define thermistorReadMinActual 25.0 //minimum temperature at the thermocouple location
+#define thermistorReadMaxActual 35.0 //maximum temperature at the thermocouple location
+#define thermistorReadMappedMin 19.0 //minimum mapped temperature
+#define thermistorReadMappedMax 58.0 //maximum mapped temperature 
 
 //heating interval(flipflop)timer parameters
 #define flipflop1On 100 //on time flipflop timer 1
-#define flipflop1Off 75 //off time fliflop timer 1
+#define flipflop1Off 150 //off time flipflop timer 1
 #define flipflop2On 100 //on time flipflop timer 2
-#define flipflop2Off 400 //off time fliflop timer 2
+#define flipflop2Off 400 //off time flipflop timer 2
 
 //temperature heating band parameters
 #define minTemp 30.0 //min temp, affects fan turn-off point
-#define midTemp 38.0 //mid temp, affects when flipflopTimer1 starts
-#define maxTemp 42.0 //max temp, affects when flipflopTimer2 starts
+#define midTemp 40.0 //mid temp, affects when flipflopTimer1 starts
+#define setPoint 50.0 //max temp, affects when flipflopTimer2 starts
 
 //other stuff
 #define lcdRefreshRate 200 //lcd refresh rate in ms, slows down update of lcd to make it more readable
@@ -141,7 +141,7 @@ void loop(void) {
     lcd.setCursor(0, 1);
     lcd.print("Heat ON");
   }
-  else if (!digitalRead(coolDownPB) && digitalRead(addHeatPB) && heating) { //cool down
+else if (!digitalRead(coolDownPB) && digitalRead(addHeatPB) && heating) { //cool down
     digitalWrite(heatSSR, LOW);
     digitalWrite(fan, HIGH);
     digitalWrite(heatOnLED , LOW);
@@ -159,10 +159,10 @@ void loop(void) {
   else if (tempRead  >= minTemp && tempRead  <= midTemp && heating) {
     flipflopTimer1.update();
   }
-  else if (tempRead  > midTemp && tempRead <= maxTemp && heating) {
+  else if (tempRead  > midTemp && tempRead <= setPoint && heating) {
     flipflopTimer2.update();
   }
-  else if (tempRead >= maxTemp && heating) {
+  else if (tempRead >= setPoint&& heating) {
     digitalWrite(heatSSR, LOW);
     digitalWrite(heatOnLED , LOW);
   }
