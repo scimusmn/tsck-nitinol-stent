@@ -11,28 +11,44 @@ FlipflopTimer flipflopTimer2;
 #include "averager.h"
 averager averageReading(10); //take 10 samples
 
-//adjustable parameters
+//arduino pins
 #define heatSSR 3
 #define addHeatPB 4
 #define coolDownPB 5
 #define fan 6
 #define heatOnLED 13
 #define thermistorPin A0 // analog input for thermistor
+
+//thermistor read fault limit parameters
 #define thermistorLow 15.0 //min safe thermistor reading in C before triggering out-of-range thermistor error fault
 #define thermistorHigh 50.0 //max safe thermistor reading in C before triggering out-of-range thermistor error fault
+
+//steinheart calculation parameters
 #define thermistorNominal 10000 // resistance at 25 degrees C
 #define temperatureNominal 25 // temp. for nominal resistance (almost always 25 C)
 #define bCoefficient 3988 //TDK  B57863S0103F040 (The beta coefficient of the thermistor is usually 3000-4000)
 #define seriesResistor 10000 // the value of the 'other' resistor
-#define lcdRefreshRate 200 //lcd refresh rate in ms, slows down update of lcd to make it more readable
-#define watchdogTimer 120000 //heat-on timeout timer in ms
-#define minTemp 30.0 //min temp, affects fan turn-off point
-#define midTemp 38.0 //mid temp, affects when flipflopTimer1 starts
-#define maxTemp 42.0 //max temp, affects when flipflopTimer2 starts
+
+//compensation for thermistor being located at cool end of spring, the mapped values change the slope of the thermistor response
+#define thermistorReadMinActual 23.0 //minimum temperature at the thermocouple location
+#define thermistorReadMaxActual 29.0 //maximum temperature at the thermocouple location
+#define thermistorReadMappedMin 23.0 //minimum temperature to map to
+#define thermistorReadMappedMax 35.5 //maximum temperature to map to
+
+//heating interval(flipflop)timer parameters
 #define flipflop1On 100 //on time flipflop timer 1
 #define flipflop1Off 75 //off time fliflop timer 1
 #define flipflop2On 100 //on time flipflop timer 2
 #define flipflop2Off 400 //off time fliflop timer 2
+
+//temperature heating band parameters
+#define minTemp 30.0 //min temp, affects fan turn-off point
+#define midTemp 38.0 //mid temp, affects when flipflopTimer1 starts
+#define maxTemp 42.0 //max temp, affects when flipflopTimer2 starts
+
+//other stuff
+#define lcdRefreshRate 200 //lcd refresh rate in ms, slows down update of lcd to make it more readable
+#define watchdogTimer 120000 //heat-on timeout timer in ms
 
 //variables
 bool heating = false;
@@ -42,21 +58,22 @@ float mapfloat(float x, float in_min, float in_max, float out_min, float out_max
 {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
-long lagTime = 0;
 float average = 0.0;
 float steinhart = 0.0;
 float displayTemp = 0.0;
-float coldOffset = 0.0; //this can be used as an offset to compensate for temp difference at spring ends
 float roundedTemp = 0.0; //display temp value on LCD
 long startTime = 0;
 long timeNow = 0; //current time
 long timenow2 = 0; //current time
 long lcdRefreshTimer = 0;
 
+//functions
 void thermistorFault() { //stay here if thermistor is disconnected or reading is out of range
   while (1);
 }
 
+
+//setup
 void setup(void) {
   // Serial.begin(9600);
   flipflopTimer1.setup([](boolean flipflopValue) {
@@ -83,6 +100,7 @@ void setup(void) {
   digitalWrite(fan, HIGH);
 }
 
+//main
 void loop(void) {
   averageReading.idle(analogRead(thermistorPin)); //get reading of thermistor add to running average
 
@@ -98,7 +116,7 @@ void loop(void) {
   steinhart -= 273.15;                         // convert to C
 
   //*********compensation for thermistor being mounted at cooler end of spring********
-  tempRead = mapfloat(steinhart, 23.0, 29.0, 23.0, 35.5); //min and max temp change at thermistor, actual measured min and max temp change at center of spring
+  tempRead = mapfloat(steinhart, thermistorReadMinActual, thermistorReadMaxActual, thermistorReadMappedMin, thermistorReadMappedMax); //min and max temp change at thermistor, actual measured min and max temp change at center of spring
   displayTemp = tempRead;
   
   //*********make sure thermistor is reading temp in expected range, fault-out if not************
@@ -107,6 +125,7 @@ void loop(void) {
     digitalWrite(heatSSR, LOW);
     lcd.clear();
     lcd.print("thermistor error");
+    digitalWrite(fan, LOW);
     thermistorFault();
   }
 
@@ -143,7 +162,7 @@ void loop(void) {
   else if (tempRead  > midTemp && tempRead <= maxTemp && heating) {
     flipflopTimer2.update();
   }
-  else if (tempRead >= maxTemp - coldOffset && heating) {
+  else if (tempRead >= maxTemp && heating) {
     digitalWrite(heatSSR, LOW);
     digitalWrite(heatOnLED , LOW);
   }
