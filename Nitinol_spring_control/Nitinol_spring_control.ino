@@ -32,8 +32,8 @@ averager averageReading(10); //take 10 samples
 //compensation for thermistor being located at cool end of spring, the mapped values change the slope of the thermistor response
 #define thermistorReadMinActual 23.0 //minimum temperature at the thermocouple location
 #define thermistorReadMaxActual 29.0 //maximum temperature at the thermocouple location
-#define thermistorReadMappedMin 23.0 //minimum temperature to map to
-#define thermistorReadMappedMax 35.5 //maximum temperature to map to
+#define thermistorReadMappedMin 23.0 //minimum mapped temperature
+#define thermistorReadMappedMax 35.5 //maximum mapped temperature 
 
 //heating interval(flipflop)timer parameters
 #define flipflop1On 100 //on time flipflop timer 1
