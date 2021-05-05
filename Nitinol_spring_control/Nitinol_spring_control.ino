@@ -11,23 +11,28 @@ FlipflopTimer flipflopTimer2;
 #include "averager.h"
 averager averageReading(10); //take 10 samples
 
+//adjustable parameters
 #define heatSSR 3
 #define addHeatPB 4
 #define coolDownPB 5
 #define fan 6
 #define heatOnLED 13
-#define THERMISTORPIN A0 // analog input for thermistor
+#define thermistorPin A0 // analog input for thermistor
 #define thermistorLow 15.0 //min safe thermistor reading in C before triggering out-of-range thermistor error fault
 #define thermistorHigh 50.0 //max safe thermistor reading in C before triggering out-of-range thermistor error fault
-#define THERMISTORNOMINAL 10000 // resistance at 25 degrees C
-#define TEMPERATURENOMINAL 25 // temp. for nominal resistance (almost always 25 C)
-#define BCOEFFICIENT 3988 //TDK  B57863S0103F040 (The beta coefficient of the thermistor is usually 3000-4000)
-#define SERIESRESISTOR 10000 // the value of the 'other' resistor
+#define thermistorNominal 10000 // resistance at 25 degrees C
+#define temperatureNominal 25 // temp. for nominal resistance (almost always 25 C)
+#define bCoefficient 3988 //TDK  B57863S0103F040 (The beta coefficient of the thermistor is usually 3000-4000)
+#define seriesResistor 10000 // the value of the 'other' resistor
 #define lcdRefreshRate 200 //lcd refresh rate in ms, slows down update of lcd to make it more readable
-#define watchdogTimer 120000 //reset timer in ms
+#define watchdogTimer 120000 //heat-on timeout timer in ms
 #define minTemp 30.0 //min temp, affects fan turn-off point
 #define midTemp 38.0 //mid temp, affects when flipflopTimer1 starts
 #define maxTemp 42.0 //max temp, affects when flipflopTimer2 starts
+#define flipflop1On 100 //on time flipflop timer 1
+#define flipflop1Off 75 //off time fliflop timer 1
+#define flipflop2On 100 //on time flipflop timer 2
+#define flipflop2Off 400 //off time fliflop timer 2
 
 //variables
 bool heating = false;
@@ -57,11 +62,11 @@ void setup(void) {
   flipflopTimer1.setup([](boolean flipflopValue) {
     digitalWrite(heatSSR, flipflopValue);
     digitalWrite(heatOnLED, flipflopValue);
-  }, 100, 75);
+  }, flipflop1On, flipflop1Off);
   flipflopTimer2.setup([](boolean flipflopValue) {
     digitalWrite(heatSSR, flipflopValue);
     digitalWrite(heatOnLED , flipflopValue);
-  }, 100, 400);
+  }, flipflop2On, flipflop2Off);
   analogReference(EXTERNAL); //set analog reference to 3.3V, using 3.3 reference improves s/n ratio
   pinMode(heatSSR, OUTPUT);
   pinMode(addHeatPB, INPUT_PULLUP);
@@ -79,16 +84,16 @@ void setup(void) {
 }
 
 void loop(void) {
-  averageReading.idle(analogRead(THERMISTORPIN)); //get reading of thermistor add to running average
+  averageReading.idle(analogRead(thermistorPin)); //get reading of thermistor add to running average
 
   //***********calculate temperature using simplifed Steinhart-Hart equation*********
   average = averageReading.ave;
   average = 1023 / average - 1;
-  average = SERIESRESISTOR / average;
-  steinhart = average / THERMISTORNOMINAL;    // (R/Ro)
+  average = seriesResistor/ average;
+  steinhart = average / thermistorNominal;    // (R/Ro)
   steinhart = log(steinhart);                  // ln(R/Ro)
-  steinhart /= BCOEFFICIENT;                   // 1/B * ln(R/Ro)
-  steinhart += 1.0 / (TEMPERATURENOMINAL + 273.15); // + (1/To)
+  steinhart /= bCoefficient;                   // 1/B * ln(R/Ro)
+  steinhart += 1.0 / (temperatureNominal + 273.15); // + (1/To)
   steinhart = 1.0 / steinhart;                 // Invert
   steinhart -= 273.15;                         // convert to C
 
@@ -123,7 +128,7 @@ void loop(void) {
     digitalWrite(heatOnLED , LOW);
     heating = false;
     lcd.setCursor(0, 1);
-    lcd.print("                "); //clear line 2
+    lcd.print("                "); //clear line 2 only
     lcd.setCursor(0, 1);
     lcd.print("Heat OFF");
   }
@@ -148,7 +153,7 @@ void loop(void) {
     digitalWrite(heatOnLED , HIGH);
     heating = false;
     lcd.setCursor(0, 1);
-    lcd.print("                "); //clear line 2
+    lcd.print("                "); //clear line 2 only
     lcd.setCursor(0, 1);
     lcd.print("Heat OFF");
   }
