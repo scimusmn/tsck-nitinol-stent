@@ -30,7 +30,7 @@ averager averageReading(10); //take 10 samples
 #define seriesResistor 10000 // the value of the 'other' resistor
 
 //compensation for thermistor being located at cool end of spring, the mapped increase the span and amplifies delta T
-#define thermistorReadMinActual 25.0 //actual minimum temperature at the thermocouple location when at room temp
+#define thermistorReadMinActual 23.0 //actual minimum temperature at the thermocouple location when at room temp
 #define thermistorReadMaxActual 35.0 //actual maximum temperature at the thermocouple location when at 50.0 setpoint
 #define thermistorReadMappedMin 21.0 //minimum mapped temperature
 #define thermistorReadMappedMax 58.0 //maximum mapped temperature 
